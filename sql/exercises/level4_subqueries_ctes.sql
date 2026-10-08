@@ -17,7 +17,9 @@
 --           (Remember when WHERE runs and when aggregates run.)
 -- ============================================================
 \echo '--- 4.1'
-
+SELECT COUNT(*) AS num_above_average
+FROM trips_raw
+WHERE fare_amount > (SELECT AVG(fare_amount) FROM trips_raw);
 
 
 -- ============================================================
@@ -31,7 +33,12 @@
 --           "above the average for that payment type"?
 -- ============================================================
 \echo '--- 4.2'
-
+WITH avg_fare AS (
+    SELECT AVG(fare_amount) AS value FROM trips_raw
+)
+SELECT COUNT(*) AS num_above_average
+FROM trips_raw
+WHERE fare_amount > (SELECT value FROM avg_fare);
 
 
 -- ============================================================
@@ -47,7 +54,16 @@
 --           joined table had duplicate rows?)
 -- ============================================================
 \echo '--- 4.3'
+SELECT COUNT(*) AS num_airport_pickups_in
+FROM trips_raw
+WHERE pulocationid IN (
+    SELECT locationid FROM zones WHERE zone LIKE '%Airport%'
+);
 
+SELECT COUNT(*) AS num_airport_pickups_join
+FROM trips_raw AS t
+JOIN zones AS z ON t.pulocationid = z.locationid
+WHERE z.zone LIKE '%Airport%';
 
 
 -- ============================================================
@@ -62,7 +78,12 @@
 --           (Look at 1.11. Which days are in the data?)
 -- ============================================================
 \echo '--- 4.4'
-
+SELECT AVG(num_trips) AS avg_trips_per_day
+FROM (
+    SELECT tpep_pickup_datetime::date AS pickup_date, COUNT(*) AS num_trips
+    FROM trips_raw
+    GROUP BY pickup_date
+) AS daily_counts;
 
 
 -- ============================================================
@@ -77,7 +98,19 @@
 --           distributed?
 -- ============================================================
 \echo '--- 4.5'
-
+WITH zone_counts AS (
+    SELECT z.zone, z.locationid, COUNT(*) AS num_pickups
+    FROM trips_raw AS t
+    JOIN zones AS z ON t.pulocationid = z.locationid
+    GROUP BY z.zone, z.locationid
+),
+avg_pickups AS (
+    SELECT AVG(num_pickups) AS value FROM zone_counts
+)
+SELECT zone, num_pickups
+FROM zone_counts
+WHERE num_pickups > (SELECT value FROM avg_pickups)
+ORDER BY num_pickups DESC;
 
 
 -- ============================================================
@@ -95,5 +128,18 @@
 --           the "T" in ETL. You'll make it permanent in 6.4.
 -- ============================================================
 \echo '--- 4.6'
-
+WITH clean_trips AS (
+    SELECT *
+    FROM trips_raw
+    WHERE fare_amount > 0
+      AND trip_distance > 0
+      AND tpep_dropoff_datetime > tpep_pickup_datetime
+      AND tpep_pickup_datetime >= '2026-01-01'::date
+      AND tpep_pickup_datetime < '2026-04-01'::date
+)
+SELECT z.borough, COUNT(*) AS num_pickups
+FROM clean_trips AS t
+JOIN zones AS z ON t.pulocationid = z.locationid
+GROUP BY z.borough
+ORDER BY num_pickups DESC;
 
