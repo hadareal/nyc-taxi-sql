@@ -29,7 +29,10 @@
 --           COUNT(column) count? Connect this to exercise 1.8.
 -- ============================================================
 \echo '--- 2.1'
-
+SELECT COUNT(*) AS total_trips,
+       COUNT(passenger_count) AS count_passenger_count,
+       COUNT(ratecodeid) AS count_ratecodeid
+FROM trips_raw;
 
 
 -- ============================================================
@@ -42,7 +45,10 @@
 --           mean? Does it change how much you trust the average?
 -- ============================================================
 \echo '--- 2.2'
-
+SELECT MIN(fare_amount) AS min_fare,
+       MAX(fare_amount) AS max_fare,
+       ROUND(AVG(fare_amount), 2) AS avg_fare
+FROM trips_raw;
 
 
 -- ============================================================
@@ -52,7 +58,10 @@
 -- Concepts: GROUP BY, ORDER BY on an aggregate
 -- ============================================================
 \echo '--- 2.3'
-
+SELECT payment_type, COUNT(*) AS num_trips
+FROM trips_raw
+GROUP BY payment_type
+ORDER BY num_trips DESC;
 
 
 -- ============================================================
@@ -67,7 +76,20 @@
 --           a CASE in every query?
 -- ============================================================
 \echo '--- 2.4'
-
+SELECT CASE payment_type
+           WHEN 0 THEN 'Flex Fare'
+           WHEN 1 THEN 'Credit card'
+           WHEN 2 THEN 'Cash'
+           WHEN 3 THEN 'No charge'
+           WHEN 4 THEN 'Dispute'
+           WHEN 5 THEN 'Unknown'
+           WHEN 6 THEN 'Voided'
+           ELSE 'Other'
+       END AS payment_type_name,
+       COUNT(*) AS num_trips
+FROM trips_raw
+GROUP BY payment_type
+ORDER BY num_trips DESC;
 
 
 -- ============================================================
@@ -82,7 +104,10 @@
 --           means one thing but means another.
 -- ============================================================
 \echo '--- 2.5'
-
+SELECT payment_type, ROUND(AVG(tip_amount), 2) AS avg_tip
+FROM trips_raw
+GROUP BY payment_type
+ORDER BY avg_tip DESC;
 
 
 -- ============================================================
@@ -95,7 +120,11 @@
 --           (Remember the order the clauses run in.)
 -- ============================================================
 \echo '--- 2.6'
-
+SELECT vendorid, COUNT(*) AS num_trips
+FROM trips_raw
+GROUP BY vendorid
+HAVING COUNT(*) > 100000
+ORDER BY num_trips DESC;
 
 
 -- ============================================================
@@ -112,7 +141,10 @@
 --              'unknown' is text. Read the error if you get one.)
 -- ============================================================
 \echo '--- 2.7'
-
+SELECT passenger_count, COUNT(*) AS num_trips
+FROM trips_raw
+GROUP BY passenger_count
+ORDER BY passenger_count;
 
 
 -- ============================================================
@@ -127,7 +159,9 @@
 --           Try it and read the error.
 -- ============================================================
 \echo '--- 2.8'
-
+SELECT ROUND(AVG(tip_amount / fare_amount * 100), 1) AS avg_tip_pct
+FROM trips_raw
+WHERE payment_type = 1 AND fare_amount > 0;
 
 
 -- ============================================================
@@ -143,7 +177,10 @@
 --           query better on an 11M-row table?
 -- ============================================================
 \echo '--- 2.9'
-
+SELECT SUM(CASE WHEN fare_amount < 0 THEN 1 ELSE 0 END) AS num_negative_fares,
+       SUM(CASE WHEN trip_distance = 0 THEN 1 ELSE 0 END) AS num_zero_distance,
+       SUM(CASE WHEN tpep_dropoff_datetime < tpep_pickup_datetime THEN 1 ELSE 0 END) AS num_dropoff_before_pickup
+FROM trips_raw;
 
 
 -- ============================================================
@@ -157,5 +194,8 @@
 --           code reference at the top of the file?
 -- ============================================================
 \echo '--- 2.10'
-
-
+SELECT ratecodeid, COUNT(*) AS num_trips, ROUND(AVG(trip_distance), 1) AS avg_distance
+FROM trips_raw
+GROUP BY ratecodeid
+HAVING AVG(trip_distance) > 5
+ORDER BY avg_distance DESC;
