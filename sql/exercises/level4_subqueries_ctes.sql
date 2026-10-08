@@ -131,11 +131,11 @@ ORDER BY num_pickups DESC;
 WITH clean_trips AS (
     SELECT *
     FROM trips_raw
-    WHERE fare_amount > 0
-      AND trip_distance > 0
-      AND tpep_dropoff_datetime > tpep_pickup_datetime
-      AND tpep_pickup_datetime >= '2026-01-01'::date
-      AND tpep_pickup_datetime < '2026-04-01'::date
+    WHERE fare_amount > 0 -- Rule 1: fare_amount must be positive because negative fares are likely data errors or refunds.
+      AND trip_distance > 0 -- Rule 2: a trip with zero distance is no ride actually taken, so we exclude those.
+      AND tpep_dropoff_datetime > tpep_pickup_datetime -- Rule 3: dropoff must occur after pickup.
+      AND tpep_pickup_datetime >= '2026-01-01'::date -- Rule 4: pickup must be within the date range the dataset covers which is Jan-Mar 2026.
+      AND tpep_pickup_datetime < '2026-04-01'::date -- Rule 4: pickup must be within the date range the dataset covers which is Jan-Mar 2026.
 )
 SELECT z.borough, COUNT(*) AS num_pickups
 FROM clean_trips AS t
@@ -143,3 +143,33 @@ JOIN zones AS z ON t.pulocationid = z.locationid
 GROUP BY z.borough
 ORDER BY num_pickups DESC;
 
+-- Result from 3.1 (all trips):
+--- 3.1
+--     borough    | num_pickups 
+-- ---------------+-------------
+--  Manhattan     |     9481890
+--  Queens        |      998379
+--  Brooklyn      |      465247
+--  Bronx         |      111654
+--  Unknown       |       12718
+--  N/A           |        4483
+--  EWR           |        1420
+--  Staten Island |        1415
+-- (8 rows)
+-- Result from 4.6 (clean trips):
+--- 4.6
+--     borough    | num_pickups 
+-- ---------------+-------------
+--  Manhattan     |     8993502
+--  Queens        |      935996
+--  Brooklyn      |      438184
+--  Bronx         |      106779
+--  Unknown       |       11699
+--  N/A           |        2011
+--  Staten Island |        1218
+--  EWR           |         327
+-- (8 rows)
+
+-- 3.1 total:  11,077,206
+-- 4.6 total:  10,489,716
+-- removed:       587,490   → about 5.3%
