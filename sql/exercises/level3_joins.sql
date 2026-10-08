@@ -23,7 +23,11 @@
 --              then GROUP BY) matter for the answer here?
 -- ============================================================
 \echo '--- 3.1'
-
+SELECT z.borough, COUNT(*) AS num_pickups
+FROM trips_raw AS t
+JOIN zones AS z ON t.pulocationid = z.locationid
+GROUP BY z.borough
+ORDER BY num_pickups DESC;
 
 
 -- ============================================================
@@ -37,7 +41,12 @@
 --           group by?
 -- ============================================================
 \echo '--- 3.2'
-
+SELECT z.zone, z.borough, COUNT(*) AS num_pickups
+FROM trips_raw AS t
+JOIN zones AS z ON t.pulocationid = z.locationid
+GROUP BY z.zone, z.borough
+ORDER BY num_pickups DESC
+LIMIT 10;
 
 
 -- ============================================================
@@ -49,7 +58,12 @@
 -- Concepts: table aliases (FROM trips_raw t ...)
 -- ============================================================
 \echo '--- 3.3'
-
+SELECT z.zone, z.borough, COUNT(*) AS num_pickups
+FROM trips_raw AS t
+JOIN zones AS z ON t.pulocationid = z.locationid
+GROUP BY z.zone, z.borough
+ORDER BY num_pickups DESC
+LIMIT 10;
 
 
 -- ============================================================
@@ -63,7 +77,12 @@
 --           give them different names in the output?
 -- ============================================================
 \echo '--- 3.4'
-
+SELECT t.tpep_pickup_datetime, t.tpep_dropoff_datetime,
+       z_pickup.zone AS pickup_zone, z_dropoff.zone AS dropoff_zone
+FROM trips_raw AS t
+JOIN zones AS z_pickup ON t.pulocationid = z_pickup.locationid
+JOIN zones AS z_dropoff ON t.dolocationid = z_dropoff.locationid
+LIMIT 10;
 
 
 -- ============================================================
@@ -76,7 +95,14 @@
 --           What kind of trip is that?
 -- ============================================================
 \echo '--- 3.5'
-
+SELECT z_pickup.zone AS pickup_zone, z_dropoff.zone AS dropoff_zone,
+       COUNT(*) AS num_trips
+FROM trips_raw AS t
+JOIN zones AS z_pickup ON t.pulocationid = z_pickup.locationid
+JOIN zones AS z_dropoff ON t.dolocationid = z_dropoff.locationid
+GROUP BY z_pickup.zone, z_dropoff.zone
+ORDER BY num_trips DESC
+LIMIT 10;
 
 
 -- ============================================================
@@ -88,7 +114,14 @@
 -- Concepts: double join, WHERE comparing columns from two aliases
 -- ============================================================
 \echo '--- 3.6'
-
+SELECT z_pickup.borough AS pickup_borough, z_dropoff.borough AS dropoff_borough,
+       COUNT(*) AS num_trips
+FROM trips_raw AS t
+JOIN zones AS z_pickup ON t.pulocationid = z_pickup.locationid
+JOIN zones AS z_dropoff ON t.dolocationid = z_dropoff.locationid
+WHERE z_pickup.borough <> z_dropoff.borough
+GROUP BY z_pickup.borough, z_dropoff.borough
+ORDER BY num_trips DESC;
 
 
 -- ============================================================
@@ -103,7 +136,11 @@
 --           INNER JOIN drop?
 -- ============================================================
 \echo '--- 3.7'
-
+SELECT z.locationid, z.borough, z.zone
+FROM zones AS z
+LEFT JOIN trips_raw AS t ON z.locationid = t.pulocationid
+WHERE t.pulocationid IS NULL
+ORDER BY z.locationid;
 
 
 -- ============================================================
@@ -117,7 +154,11 @@
 --           This mistake is extremely common in real reports.
 -- ============================================================
 \echo '--- 3.8'
-
+SELECT z.locationid, z.borough, z.zone, COUNT(t.pulocationid) AS num_pickups
+FROM zones AS z
+LEFT JOIN trips_raw AS t ON z.locationid = t.pulocationid
+GROUP BY z.locationid, z.borough, z.zone
+ORDER BY num_pickups DESC;
 
 
 -- ============================================================
@@ -132,5 +173,17 @@
 --           more expensive for the database to compute, and why?
 -- ============================================================
 \echo '--- 3.9'
+SELECT COUNT(*) AS num_unique_locationids
+FROM (
+    SELECT pulocationid AS locationid FROM trips_raw
+    UNION
+    SELECT dolocationid AS locationid FROM trips_raw
+) AS combined;
 
+SELECT COUNT(*) AS num_total_locationids
+FROM (
+    SELECT pulocationid AS locationid FROM trips_raw
+    UNION ALL
+    SELECT dolocationid AS locationid FROM trips_raw
+) AS combined;
 
